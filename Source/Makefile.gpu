@@ -1,0 +1,56 @@
+# Tested with pgi/18.4 mkl/2018.0.3 cuda/9.2.88 at OSC:w
+#
+# GPU single precision:
+# make -f Makefile.gpu clean all
+# 
+# GPU double precision:
+# make -f Makefile.gpu clean all PRECISION=double
+
+.SUFFIXES: .mod .o .f90
+
+PRECISION := single
+FC = pgf90
+FCFLAGS = -Mpreprocess -Bstatic -Mbackslash -mp -Mcuda=cuda9.0 -DGPU -D$(PRECISION)_precision $(MKL_FFLAGS) $(MKL_FFTW_FFLAGS)
+LDFLAGS = -mp -Mcuda=cuda9.0 $(MKL_LIBS) $(MKL_FFLAGS) $(MKL_FFTW_FFLAGS) -L$(CUDA_HOME)/lib64 -lcuda -lcufft
+
+SUFFIX = .f90
+
+OBJS =  \
+	quadpack.o \
+	m_precision.o \
+	GPU_routines/mod_cufft.o \
+	GPU_routines/mod_cuda_array_library.o \
+	m_string.o \
+	m_numerical_tools.o \
+	mod_global_variables.o \
+	m_crystallography.o \
+	m_electron.o \
+	m_user_input.o \
+	GPU_routines/mod_cuda_setup.o \
+	mod_CUFFT_wrapper.o \
+	GPU_routines/mod_cuda_ms.o \
+	mod_output.o \
+	m_multislice.o \
+	GPU_routines/mod_cuda_potential.o \
+	m_lens.o \
+	m_tilt.o \
+	m_absorption.o \
+	m_potential.o \
+	s_qep_stem.o \
+	s_absorptive_stem.o \
+	s_absorptive_tem.o \
+	MS_utilities.o \
+	s_qep_tem.o \
+	muSTEM.o
+
+#F90SRC_MOD = $(OBJS_MOD:.mod=$(SUFFIX))
+F90SRC = $(OBJS:.o=$(SUFFIX))
+
+$(OBJS): $(F90SRC) 
+	${FC} ${FCFLAGS} -c $*$(SUFFIX) -o $@
+
+all: link
+link: $(OBJS)
+	${FC} ${LDFLAGS} $(OBJS) -o MuSTEM.x.gpu.${PRECISION}
+clean:
+	rm -f *.mod *.o GPU_routines/*.o
